@@ -1,15 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart'; // Para navegar de volta à MainScreen
 
-class CadrastroScreen extends StatefulWidget {
+class CadastroScreen extends StatefulWidget {
   @override
-  _CadrastroScreenState createState() => _CadrastroScreenState();
+  _CadastroScreenState createState() => _CadastroScreenState();
 }
 
-class _CadrastroScreenState extends State<CadrastroScreen> {
+class _CadastroScreenState extends State<CadastroScreen> {
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _idadeController = TextEditingController();
   List<String> _usuarios = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarUsuarios(); // Carregar os cadastros ao iniciar a tela
+  }
+
+  // Função para carregar os cadastros salvos
+  void _carregarUsuarios() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? usuariosSalvos = prefs.getStringList('usuarios');
+    if (usuariosSalvos != null) {
+      setState(() {
+        _usuarios = usuariosSalvos;
+      });
+    }
+  }
+
+  // Função para salvar os cadastros localmente
+  void _salvarUsuarios() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('usuarios', _usuarios);
+  }
 
   void _adicionarUsuario() {
     String nome = _nomeController.text;
@@ -21,6 +45,7 @@ class _CadrastroScreenState extends State<CadrastroScreen> {
       });
       _nomeController.clear();
       _idadeController.clear();
+      _salvarUsuarios(); // Salvar os cadastros após adicionar um novo usuário
       Navigator.pop(context);
     } else {
       showDialog(
@@ -58,8 +83,7 @@ class _CadrastroScreenState extends State<CadrastroScreen> {
                   child: ListTile(
                     title: Text(_usuarios[index]),
                     onTap: () {
-                      String nome = _usuarios[index]
-                          .split(',')[0]; // Extrai o nome antes da vírgula
+                      String nome = _usuarios[index].split(',')[0];
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -76,9 +100,7 @@ class _CadrastroScreenState extends State<CadrastroScreen> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: FloatingActionButton(
-              onPressed: () {
-                _abrirCadastro();
-              },
+              onPressed: _abrirCadastro,
               backgroundColor: Colors.grey,
               child: Icon(Icons.add),
             ),
@@ -93,7 +115,7 @@ class _CadrastroScreenState extends State<CadrastroScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Adicionar Novo Usuário'),
+          title: Text('Novo Usuário'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -117,9 +139,7 @@ class _CadrastroScreenState extends State<CadrastroScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                _adicionarUsuario();
-              },
+              onPressed: _adicionarUsuario,
               child: Text('Cadastrar'),
             ),
           ],
