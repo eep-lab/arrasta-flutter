@@ -1,132 +1,143 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'main.dart';
 
-class Estimulo1 extends StatefulWidget {
+class Estimulo1Screen extends StatefulWidget {
   @override
-  _Estimulo1State createState() => _Estimulo1State();
+  _Estimulo1ScreenState createState() => _Estimulo1ScreenState();
 }
 
-class _Estimulo1State extends State<Estimulo1> {
-  double bolaAmarelaX = 50;
-  double bolaAmarelaY = 50;
-  double bolaPretaX = 0; // Variável para posicionamento da bola preta
-  double bolaPretaY = 0; // Variável para posicionamento da bola preta
-  bool bolaAmarelaEstatica = false;
-  bool _cronometroAtivo = true;
-  late Timer _timer;
-  int _minutes = 0;
-  int _seconds = 0;
-  int _milliseconds = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _iniciarCronometro();
-  }
+class _Estimulo1ScreenState extends State<Estimulo1Screen> {
+  Offset _bolaAmarelaPos = Offset(150, 150);
+  bool _cronometroAtivo = false;
+  bool _esferasSobrepostas = false;
+  Timer? _cronometro;
+  Duration _tempo = Duration.zero;
 
   void _iniciarCronometro() {
-    _timer = Timer.periodic(Duration(milliseconds: 1), (timer) {
-      if (!_cronometroAtivo) return;
-
-      setState(() {
-        _milliseconds++;
-        if (_milliseconds == 1000) {
-          _milliseconds = 0;
-          _seconds++;
-          if (_seconds == 60) {
-            _seconds = 0;
-            _minutes++;
-          }
-        }
+    if (!_cronometroAtivo) {
+      _cronometroAtivo = true;
+      _cronometro = Timer.periodic(Duration(milliseconds: 10), (timer) {
+        setState(() {
+          _tempo += Duration(milliseconds: 10);
+        });
       });
-    });
+    }
   }
 
   void _pararCronometro() {
-    _timer.cancel();
-  }
-
-  void _moverBola(DragUpdateDetails details) {
-    if (!bolaAmarelaEstatica) {
-      setState(() {
-        bolaAmarelaX += details.delta.dx;
-        bolaAmarelaY += details.delta.dy;
-      });
-
-      _verificarColisao();
+    if (_cronometroAtivo) {
+      _cronometroAtivo = false;
+      _cronometro?.cancel();
     }
   }
 
-  void _verificarColisao() {
-    // Verifica se as duas bolas estão na mesma posição (com margem de erro)
-    if ((bolaAmarelaX - bolaPretaX).abs() < 10 &&
-        (bolaAmarelaY - bolaPretaY).abs() < 10) {
-      setState(() {
-        bolaAmarelaEstatica = true;
-        _pararCronometro();
-      });
-    }
+  bool _bolasSeSobrepoem(Offset bolaPretaPos, double tamanho) {
+    return (_bolaAmarelaPos.dx - bolaPretaPos.dx).abs() < tamanho &&
+        (_bolaAmarelaPos.dy - bolaPretaPos.dy).abs() < tamanho;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Centralizar a esfera preta
-    bolaPretaX = MediaQuery.of(context).size.width / 2 - 50;
-    bolaPretaY = MediaQuery.of(context).size.height / 2 - 50;
+    double tamanhoBola = 80.0;
+    Offset bolaPretaPos = Offset(
+        MediaQuery.of(context).size.width / 2 - tamanhoBola / 2,
+        MediaQuery.of(context).size.height / 2 - tamanhoBola / 2);
 
     return Scaffold(
       body: Stack(
         children: [
-          // Esfera preta centralizada
+          // Bola preta estática
           Positioned(
-            left: bolaPretaX,
-            top: bolaPretaY,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // Esfera amarela
-          Positioned(
-            left: bolaAmarelaX,
-            top: bolaAmarelaY,
+            left: bolaPretaPos.dx,
+            top: bolaPretaPos.dy,
             child: GestureDetector(
-              onPanUpdate: _moverBola,
+              onTap: () {
+                if (_esferasSobrepostas) {
+                  Navigator.pop(context);
+                }
+              },
               child: Container(
-                width: 100,
-                height: 100,
+                width: tamanhoBola,
+                height: tamanhoBola,
                 decoration: BoxDecoration(
-                  color: bolaAmarelaEstatica ? Colors.green : Colors.yellow,
+                  color: Colors.black,
                   shape: BoxShape.circle,
                 ),
               ),
-              // Transformar a esfera amarela em botão quando estática
-              onTap: bolaAmarelaEstatica
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => MainScreen()),
-                      );
-                    }
-                  : null,
             ),
           ),
-          // Cronômetro no canto inferior esquerdo
+
+          // Bola amarela móvel
           Positioned(
-            left: 20,
-            bottom: 20,
-            child: Text(
-              '$_minutes:${_seconds.toString().padLeft(2, '0')}:${_milliseconds.toString().padLeft(3, '0')}',
-              style: TextStyle(color: Colors.grey, fontSize: 20),
+            left: _bolaAmarelaPos.dx,
+            top: _bolaAmarelaPos.dy,
+            child: GestureDetector(
+              onPanStart: (details) {
+                if (!_esferasSobrepostas) {
+                  _iniciarCronometro();
+                }
+              },
+              onPanUpdate: (details) {
+                if (!_esferasSobrepostas) {
+                  setState(() {
+                    _bolaAmarelaPos = Offset(
+                      _bolaAmarelaPos.dx + details.delta.dx,
+                      _bolaAmarelaPos.dy + details.delta.dy,
+                    );
+                  });
+
+                  if (_bolasSeSobrepoem(bolaPretaPos, tamanhoBola)) {
+                    setState(() {
+                      _esferasSobrepostas = true;
+                      _bolaAmarelaPos = bolaPretaPos;
+                    });
+                    _pararCronometro();
+                  }
+                }
+              },
+              child: Container(
+                width: tamanhoBola,
+                height: tamanhoBola,
+                decoration: BoxDecoration(
+                  color: Colors.yellow,
+                  shape: BoxShape.circle,
+                ),
+              ),
             ),
           ),
+
+          // Cronômetro no canto inferior
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: Text(
+              '${_tempo.inMinutes.toString().padLeft(2, '0')}:'
+              '${(_tempo.inSeconds % 60).toString().padLeft(2, '0')}:'
+              '${(_tempo.inMilliseconds % 1000 ~/ 10).toString().padLeft(2, '0')}',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          // Botão de retorno à main (aparece após as bolas se sobreporem)
+          if (_esferasSobrepostas)
+            Positioned(
+              top: 20,
+              left: 20,
+              child: IconButton(
+                icon: Icon(Icons.refresh, size: 30, color: Colors.black),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _cronometro?.cancel();
+    super.dispose();
   }
 }
